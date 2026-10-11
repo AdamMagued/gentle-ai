@@ -56,6 +56,7 @@ type AcknowledgedBoundary struct {
 // derive a receipt or a delivery gate from it, must prefer live authority, and
 // must keep a live lineage visible.
 func AcknowledgedBoundaryCommit(ctx context.Context, repo string, live Snapshot) (AcknowledgedBoundary, bool, error) {
+	defer StartStatusPhase(ctx, StatusPhasePredecessorConsumptionAncestry)()
 	if live.Kind != TargetBaseDiff || len(live.IntendedUntracked) != 0 || len(live.Paths) == 0 {
 		return AcknowledgedBoundary{}, false, nil
 	}
