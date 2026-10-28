@@ -33,11 +33,7 @@ func reviewStatusPhaseTimingsEnabled(args []string) bool {
 }
 
 func reviewStatusPhaseTimingsEnvEnabled() bool {
-	val := strings.TrimSpace(os.Getenv(reviewStatusPhaseTimingsEnvVar))
-	if val == "" {
-		return false
-	}
-	enabled, err := strconv.ParseBool(val)
+	enabled, err := strconv.ParseBool(strings.TrimSpace(os.Getenv(reviewStatusPhaseTimingsEnvVar)))
 	return err == nil && enabled
 }
 

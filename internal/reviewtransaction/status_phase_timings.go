@@ -44,11 +44,13 @@ type StatusPhaseTimingSnapshot struct {
 func (s StatusPhaseTimingSnapshot) FormatSummary() string {
 	parts := make([]string, len(s.Phases))
 	for i, entry := range s.Phases {
-		status := ""
-		if entry.InFlight {
-			status = "[in_flight]"
+		if entry.Count == 0 {
+			parts[i] = fmt.Sprintf("%s=[not measured]", entry.Phase)
+		} else if entry.InFlight {
+			parts[i] = fmt.Sprintf("%s=%dms[in_flight]", entry.Phase, entry.DurationMs)
+		} else {
+			parts[i] = fmt.Sprintf("%s=%dms", entry.Phase, entry.DurationMs)
 		}
-		parts[i] = fmt.Sprintf("%s=%dms%s", entry.Phase, entry.DurationMs, status)
 	}
 	return "status_phase_timings: " + strings.Join(parts, " ")
 }
@@ -93,7 +95,6 @@ func (t *StatusPhaseTimings) Start(phase StatusPhase) func() {
 		if t.active == phase {
 			t.durations[phase] += t.now().Sub(t.activeStart)
 			t.active = ""
-			t.activeStart = time.Time{}
 		}
 	}
 }
@@ -134,9 +135,8 @@ func StatusPhaseTimingsFromContext(ctx context.Context) *StatusPhaseTimings {
 }
 
 func StartStatusPhase(ctx context.Context, phase StatusPhase) func() {
-	timings := StatusPhaseTimingsFromContext(ctx)
-	if timings == nil {
-		return func() {}
+	if timings := StatusPhaseTimingsFromContext(ctx); timings != nil {
+		return timings.Start(phase)
 	}
-	return timings.Start(phase)
+	return func() {}
 }

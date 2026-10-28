@@ -12,6 +12,17 @@ func TestStatusPhaseTimings(t *testing.T) {
 	fakeNow := time.Date(2026, 10, 11, 0, 0, 0, 0, time.UTC)
 	timings.now = func() time.Time { return fakeNow }
 
+	wantFresh := "status_phase_timings: repository_identity_resolution=[not measured] snapshot_construction=[not measured] implicit_base_range_derivation=[not measured] predecessor_consumption_ancestry=[not measured]"
+	if s := NewStatusPhaseTimings().Snapshot().FormatSummary(); s != wantFresh {
+		t.Fatalf("fresh summary = %q, want %q", s, wantFresh)
+	}
+
+	zeroDur := NewStatusPhaseTimings()
+	zeroDur.Start(StatusPhaseRepositoryIdentityResolution)()
+	if !strings.Contains(zeroDur.Snapshot().FormatSummary(), "repository_identity_resolution=0ms") {
+		t.Fatalf("measured 0ms phase must render =0ms: %s", zeroDur.Snapshot().FormatSummary())
+	}
+
 	for _, step := range []struct {
 		phase StatusPhase
 		dur   time.Duration
@@ -50,12 +61,13 @@ func TestStatusPhaseTimingsOuterAndContext(t *testing.T) {
 	stopInner()
 	stopOuter()
 
+	if sum := timings.Snapshot().FormatSummary(); !strings.Contains(sum, "snapshot_construction=[not measured]") || !strings.Contains(sum, "predecessor_consumption_ancestry=30ms") {
+		t.Fatalf("expected unmeasured nested and measured outer phases in summary: %s", sum)
+	}
+
 	for _, p := range timings.Snapshot().Phases {
-		if p.Phase == StatusPhaseSnapshotConstruction && p.Count != 0 {
-			t.Fatalf("nested phase should not count: %+v", p)
-		}
-		if p.Phase == StatusPhasePredecessorConsumptionAncestry && p.DurationMs != 30 {
-			t.Fatalf("outer phase duration want 30ms, got %+v", p)
+		if (p.Phase == StatusPhaseSnapshotConstruction && p.Count != 0) || (p.Phase == StatusPhasePredecessorConsumptionAncestry && p.DurationMs != 30) {
+			t.Fatalf("phase timing mismatch: %+v", p)
 		}
 	}
 
